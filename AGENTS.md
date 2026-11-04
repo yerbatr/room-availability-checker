@@ -15,7 +15,7 @@ Guidance for agents working on the Smart Campus Room Availability prototype.
 - `npm run typecheck`: TypeScript check (`tsconfig.app.json`).
 - `npm run lint`: ESLint.
 - `npm run build`: production build. Run this after any change.
-- There is no test runner. Do not install one unless the user asks.
+- `npm test`: Vitest unit tests (`src/**/*.test.ts`). Booking rules are tested here; keep rule changes covered.
 
 ## Refactoring objective
 
