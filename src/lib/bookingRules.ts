@@ -56,6 +56,10 @@ export function isDurationWithinLimit(start: number, end: number): boolean {
   return duration > 0 && duration <= MAX_BOOKING_DURATION;
 }
 
+export function getDurationHint(start: number, end: number): number | null {
+  return isDurationWithinLimit(start, end) ? end - start : null;
+}
+
 export function validateBookingRequest(request: BookingRequest, currentTime: number): ValidationError[] {
   const errors: ValidationError[] = [];
 

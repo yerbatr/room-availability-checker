@@ -1,5 +1,7 @@
-import { AlertCircle, Check, SlidersHorizontal } from 'lucide-react';
+import { Check, SlidersHorizontal } from 'lucide-react';
 import type { EquipmentItem } from '@/data/rooms';
+import { FieldError } from '@/components/FieldError';
+import { FIELD_LABEL_CLASS, fieldInputClass } from '@/components/formStyles';
 
 interface RoomFiltersProps {
   attendeesInput: string;
@@ -45,7 +47,7 @@ export function RoomFilters({
       </div>
 
       <div>
-        <label htmlFor="attendees" className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">
+        <label htmlFor="attendees" className={FIELD_LABEL_CLASS}>
           Attendees
         </label>
         <input
@@ -57,18 +59,13 @@ export function RoomFilters({
           placeholder="Any"
           value={attendeesInput}
           onChange={e => onAttendeesChange(e.target.value)}
-          className={`w-full bg-slate-50 border rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${attendeesError ? 'border-red-400' : 'border-slate-200'}`}
+          className={`${fieldInputClass(Boolean(attendeesError))} placeholder:text-slate-400`}
         />
-        {attendeesError && (
-          <p className="mt-1.5 text-xs text-red-600 flex items-start gap-1">
-            <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-            {attendeesError}
-          </p>
-        )}
+        {attendeesError && <FieldError message={attendeesError} />}
       </div>
 
       <div>
-        <p className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">Equipment needed</p>
+        <p className={FIELD_LABEL_CLASS}>Equipment needed</p>
         <div className="flex flex-wrap gap-2">
           {equipmentOptions.map(item => {
             const pressed = selectedEquipment.includes(item);

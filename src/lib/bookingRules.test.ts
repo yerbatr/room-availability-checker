@@ -3,6 +3,7 @@ import {
   MAX_BOOKING_DURATION,
   evaluateAvailability,
   findConflict,
+  getDurationHint,
   isDurationWithinLimit,
   minutesToTime,
   overlaps,
@@ -116,6 +117,22 @@ describe('isDurationWithinLimit', () => {
   it('rejects zero-length and reversed intervals', () => {
     expect(isDurationWithinLimit(600, 600)).toBe(false);
     expect(isDurationWithinLimit(600, 500)).toBe(false);
+  });
+});
+
+describe('getDurationHint', () => {
+  it('returns the duration for a valid interval', () => {
+    expect(getDurationHint(540, 600)).toBe(60);
+  });
+
+  it('returns the duration for an interval of exactly the maximum', () => {
+    expect(getDurationHint(480, 600)).toBe(MAX_BOOKING_DURATION);
+  });
+
+  it('returns null when the duration exceeds the limit, is zero, or is reversed', () => {
+    expect(getDurationHint(480, 481 + MAX_BOOKING_DURATION)).toBeNull();
+    expect(getDurationHint(600, 600)).toBeNull();
+    expect(getDurationHint(600, 500)).toBeNull();
   });
 });
 

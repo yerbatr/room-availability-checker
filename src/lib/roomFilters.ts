@@ -18,6 +18,10 @@ export function filterRooms<T extends FilterableRoom>(rooms: T[], filters: RoomF
   );
 }
 
+export function keepSelectedRoomId(selectedRoomId: string, visibleRooms: { id: string }[]): string {
+  return visibleRooms.some(room => room.id === selectedRoomId) ? selectedRoomId : '';
+}
+
 export function parseAttendees(input: string): { value: number | null; error: string | null } {
   const trimmed = input.trim();
   if (trimmed === '') {

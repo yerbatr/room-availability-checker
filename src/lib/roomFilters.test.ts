@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ROOMS } from '@/data/rooms';
 import { evaluateAvailability } from '@/lib/bookingRules';
-import { filterRooms, parseAttendees } from '@/lib/roomFilters';
+import { filterRooms, keepSelectedRoomId, parseAttendees } from '@/lib/roomFilters';
 
 const NO_FILTERS = { attendees: null, equipment: [] };
 
@@ -46,6 +46,22 @@ describe('filterRooms', () => {
     const snapshot = structuredClone(ROOMS);
     filterRooms(ROOMS, { attendees: 50, equipment: ['Projector'] });
     expect(ROOMS).toEqual(snapshot);
+  });
+});
+
+describe('keepSelectedRoomId', () => {
+  const visible = [{ id: 'LT101' }, { id: 'SR204' }];
+
+  it('keeps the selection when the room is still visible', () => {
+    expect(keepSelectedRoomId('SR204', visible)).toBe('SR204');
+  });
+
+  it('clears the selection when the room is filtered out', () => {
+    expect(keepSelectedRoomId('LAB3', visible)).toBe('');
+  });
+
+  it('returns an empty selection unchanged', () => {
+    expect(keepSelectedRoomId('', visible)).toBe('');
   });
 });
 

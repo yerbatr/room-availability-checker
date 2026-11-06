@@ -1,21 +1,23 @@
 import { useState } from 'react';
-import { Building2, Clock, CheckCircle, XCircle, AlertCircle, MapPin, Users, ChevronDown, SearchX } from 'lucide-react';
+import { AlertCircle, Building2, ChevronDown, Clock, MapPin, SearchX, Users } from 'lucide-react';
 import {
   evaluateAvailability,
-  isDurationWithinLimit,
+  getDurationHint,
   minutesToTime,
   timeToMinutes,
   validateBookingRequest,
-  type Booking,
   type ValidationError,
 } from '@/lib/bookingRules';
 import { EQUIPMENT_OPTIONS, ROOMS, type EquipmentItem } from '@/data/rooms';
-import { filterRooms, parseAttendees } from '@/lib/roomFilters';
+import { filterRooms, keepSelectedRoomId, parseAttendees } from '@/lib/roomFilters';
+import { DayTimeline } from '@/components/DayTimeline';
+import { EmptyState } from '@/components/EmptyState';
+import { FieldError } from '@/components/FieldError';
+import { FIELD_LABEL_CLASS, fieldInputClass } from '@/components/formStyles';
+import { ResultBanner } from '@/components/ResultBanner';
 import { RoomFilters } from '@/components/RoomFilters';
 
 const CURRENT_TIME = 8 * 60 + 30; // 08:30
-
-type ResultType = 'available' | 'unavailable' | null;
 
 export default function App() {
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
@@ -30,23 +32,26 @@ export default function App() {
   const visibleRooms = filterRooms(ROOMS, { attendees: attendees.value, equipment: requiredEquipment });
   const selectedRoom = visibleRooms.find(r => r.id === selectedRoomId) ?? null;
 
-  const outcome = checked && selectedRoom
-    ? evaluateAvailability(selectedRoom, { start: timeToMinutes(startTime), end: timeToMinutes(endTime) })
+  const startMinutes = startTime ? timeToMinutes(startTime) : null;
+  const endMinutes = endTime ? timeToMinutes(endTime) : null;
+  const durationHint = startMinutes !== null && endMinutes !== null
+    ? getDurationHint(startMinutes, endMinutes)
     : null;
-  const result: ResultType = outcome?.status ?? null;
-  const resultMessage = outcome?.message ?? '';
 
-  const getError = (field: ValidationError['field']) =>
-    errors.find(e => e.field === field)?.message ?? null;
+  const outcome = checked && selectedRoom && startMinutes !== null && endMinutes !== null
+    ? evaluateAvailability(selectedRoom, { start: startMinutes, end: endMinutes })
+    : null;
+
+  const roomError = errors.find(e => e.field === 'general')?.message ?? null;
+  const startError = errors.find(e => e.field === 'start')?.message ?? null;
+  const endError = errors.find(e => e.field === 'end')?.message ?? null;
 
   function applyFilters(nextAttendees: string, nextEquipment: EquipmentItem[]) {
     const nextVisible = filterRooms(ROOMS, {
       attendees: parseAttendees(nextAttendees).value,
       equipment: nextEquipment,
     });
-    if (!nextVisible.some(r => r.id === selectedRoomId)) {
-      setSelectedRoomId('');
-    }
+    setSelectedRoomId(keepSelectedRoomId(selectedRoomId, nextVisible));
     setAttendeesInput(nextAttendees);
     setRequiredEquipment(nextEquipment);
   }
@@ -124,7 +129,7 @@ export default function App() {
 
             {/* Room selector */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">
+              <label className={FIELD_LABEL_CLASS}>
                 Room
               </label>
               <div className="relative">
@@ -132,7 +137,7 @@ export default function App() {
                   value={selectedRoomId}
                   disabled={visibleRooms.length === 0}
                   onChange={e => { setSelectedRoomId(e.target.value); setErrors([]); }}
-                  className={`w-full appearance-none bg-slate-50 border rounded-lg px-3 py-2.5 text-sm text-slate-800 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${getError('general') ? 'border-red-400' : 'border-slate-200'}`}
+                  className={`${fieldInputClass(Boolean(roomError))} appearance-none pr-8`}
                 >
                   <option value="">{visibleRooms.length === 0 ? '-- No matching rooms --' : '-- Select a room --'}</option>
                   {visibleRooms.map(r => (
@@ -143,67 +148,44 @@ export default function App() {
                 </select>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               </div>
-              {getError('general') && (
-                <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                  {getError('general')}
-                </p>
-              )}
+              {roomError && <FieldError message={roomError} />}
             </div>
 
             {/* Time inputs */}
             <div className="grid grid-cols-2 gap-3 min-w-0">
               <div className="min-w-0">
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">
+                <label className={FIELD_LABEL_CLASS}>
                   Start Time
                 </label>
                 <input
                   type="time"
                   value={startTime}
                   onChange={e => { setStartTime(e.target.value); setChecked(false); setErrors([]); }}
-                  className={`w-full bg-slate-50 border rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${getError('start') ? 'border-red-400' : 'border-slate-200'}`}
+                  className={fieldInputClass(Boolean(startError))}
                 />
-                {getError('start') && (
-                  <p className="mt-1.5 text-xs text-red-600 flex items-start gap-1">
-                    <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                    {getError('start')}
-                  </p>
-                )}
+                {startError && <FieldError message={startError} />}
               </div>
               <div className="min-w-0">
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">
+                <label className={FIELD_LABEL_CLASS}>
                   End Time
                 </label>
                 <input
                   type="time"
                   value={endTime}
                   onChange={e => { setEndTime(e.target.value); setChecked(false); setErrors([]); }}
-                  className={`w-full bg-slate-50 border rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${getError('end') ? 'border-red-400' : 'border-slate-200'}`}
+                  className={fieldInputClass(Boolean(endError))}
                 />
-                {getError('end') && (
-                  <p className="mt-1.5 text-xs text-red-600 flex items-start gap-1">
-                    <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                    {getError('end')}
-                  </p>
-                )}
+                {endError && <FieldError message={endError} />}
               </div>
             </div>
 
             {/* Duration hint */}
-            {startTime && endTime && (() => {
-              const s = timeToMinutes(startTime);
-              const e = timeToMinutes(endTime);
-              const dur = e - s;
-              if (isDurationWithinLimit(s, e)) {
-                return (
-                  <p className="text-xs text-slate-500 flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
-                    <Clock className="w-3 h-3 text-slate-400" />
-                    Duration: <span className="font-medium text-slate-700">{dur} min</span>
-                  </p>
-                );
-              }
-              return null;
-            })()}
+            {durationHint !== null && (
+              <p className="text-xs text-slate-500 flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                <Clock className="w-3 h-3 text-slate-400" />
+                Duration: <span className="font-medium text-slate-700">{durationHint} min</span>
+              </p>
+            )}
 
             {/* Action buttons */}
             <div className="flex gap-2 pt-1">
@@ -222,29 +204,7 @@ export default function App() {
             </div>
 
             {/* Result */}
-            {checked && result && (
-              <div
-                className={`rounded-xl p-4 flex items-start gap-3 ${
-                  result === 'available'
-                    ? 'bg-emerald-50 border border-emerald-200'
-                    : 'bg-red-50 border border-red-200'
-                }`}
-              >
-                {result === 'available' ? (
-                  <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                )}
-                <div>
-                  <p className={`text-sm font-bold ${result === 'available' ? 'text-emerald-800' : 'text-red-800'}`}>
-                    {result === 'available' ? 'Available' : 'Unavailable'}
-                  </p>
-                  <p className={`text-xs mt-0.5 leading-relaxed ${result === 'available' ? 'text-emerald-700' : 'text-red-700'}`}>
-                    {resultMessage}
-                  </p>
-                </div>
-              </div>
-            )}
+            {outcome && <ResultBanner status={outcome.status} message={outcome.message} />}
           </div>
         </section>
 
@@ -294,9 +254,9 @@ export default function App() {
                 <DayTimeline
                   bookings={selectedRoom.bookings}
                   currentTime={CURRENT_TIME}
-                  checkStart={checked && startTime ? timeToMinutes(startTime) : null}
-                  checkEnd={checked && endTime ? timeToMinutes(endTime) : null}
-                  checkResult={result}
+                  checkStart={checked ? startMinutes : null}
+                  checkEnd={checked ? endMinutes : null}
+                  checkResult={outcome?.status ?? null}
                 />
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
                   <span className="flex items-center gap-1.5">
@@ -336,28 +296,26 @@ export default function App() {
               </div>
             </>
           ) : visibleRooms.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-10 flex flex-col items-center justify-center text-center min-h-64">
-              <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                <SearchX className="w-7 h-7 text-slate-400" />
-              </div>
-              <p className="text-slate-600 font-medium text-sm">No rooms match your requirements</p>
-              <p className="text-slate-400 text-xs mt-1 max-w-xs">Try a lower attendee count or fewer equipment items.</p>
-              <button
-                type="button"
-                onClick={handleClearFilters}
-                className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                Clear filters
-              </button>
-            </div>
+            <EmptyState
+              icon={SearchX}
+              title="No rooms match your requirements"
+              description="Try a lower attendee count or fewer equipment items."
+              action={
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  Clear filters
+                </button>
+              }
+            />
           ) : (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-10 flex flex-col items-center justify-center text-center min-h-64">
-              <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                <Building2 className="w-7 h-7 text-slate-400" />
-              </div>
-              <p className="text-slate-600 font-medium text-sm">No room selected</p>
-              <p className="text-slate-400 text-xs mt-1">Choose a room from the list to see its schedule and check availability.</p>
-            </div>
+            <EmptyState
+              icon={Building2}
+              title="No room selected"
+              description="Choose a room from the list to see its schedule and check availability."
+            />
           )}
         </section>
       </main>
@@ -365,101 +323,6 @@ export default function App() {
       <footer className="border-t border-slate-200 bg-white py-3 text-center text-xs text-slate-400">
         Smart Campus &mdash; Room Availability Prototype &mdash; Data is fictional and for demonstration only
       </footer>
-    </div>
-  );
-}
-
-function DayTimeline({
-  bookings,
-  currentTime,
-  checkStart,
-  checkEnd,
-  checkResult,
-}: {
-  bookings: Booking[];
-  currentTime: number;
-  checkStart: number | null;
-  checkEnd: number | null;
-  checkResult: ResultType;
-}) {
-  const DAY_START = 7 * 60;  // 07:00
-  const DAY_END = 22 * 60;   // 22:00
-  const SPAN = DAY_END - DAY_START;
-
-  const toPercent = (m: number) => Math.max(0, Math.min(100, ((m - DAY_START) / SPAN) * 100));
-
-  const labelTransform = (m: number) => {
-    const pct = toPercent(m);
-    if (pct <= 0) return '';
-    if (pct >= 100) return '-translate-x-full';
-    return '-translate-x-1/2';
-  };
-
-  const hourMarkers: number[] = [];
-  for (let h = 7; h <= 22; h++) hourMarkers.push(h * 60);
-
-  return (
-    <div className="relative overflow-hidden">
-      {/* Hour labels */}
-      <div className="relative h-5 mb-1">
-        {hourMarkers.filter((_, i) => i % 2 === 0).map(m => (
-          <span
-            key={m}
-            className={`absolute text-[10px] text-slate-400 ${labelTransform(m)}`}
-            style={{ left: `${toPercent(m)}%` }}
-          >
-            {minutesToTime(m)}
-          </span>
-        ))}
-      </div>
-
-      {/* Bar */}
-      <div className="relative h-10 bg-slate-100 rounded-lg overflow-hidden">
-        {/* Existing bookings */}
-        {bookings.map((b, i) => (
-          <div
-            key={i}
-            title={`${b.label}: ${minutesToTime(b.start)}–${minutesToTime(b.end)}`}
-            className="absolute top-0 h-full bg-blue-400 opacity-90 rounded-sm overflow-hidden"
-            style={{
-              left: `${toPercent(b.start)}%`,
-              width: `${toPercent(b.end) - toPercent(b.start)}%`,
-            }}
-          />
-        ))}
-
-        {/* Checked interval */}
-        {checkStart !== null && checkEnd !== null && checkResult && (
-          <div
-            className={`absolute top-0 h-full opacity-80 ${checkResult === 'available' ? 'bg-emerald-400' : 'bg-red-400'}`}
-            style={{
-              left: `${toPercent(checkStart)}%`,
-              width: `${toPercent(checkEnd) - toPercent(checkStart)}%`,
-            }}
-          />
-        )}
-
-        {/* Current time line */}
-        {currentTime >= DAY_START && currentTime <= DAY_END && (
-          <div
-            className="absolute top-0 h-full w-0.5 bg-amber-500 z-10"
-            style={{ left: `${toPercent(currentTime)}%` }}
-          />
-        )}
-      </div>
-
-      {/* Bottom labels */}
-      <div className="relative h-5 mt-1">
-        {hourMarkers.filter((_, i) => i % 2 === 1).map(m => (
-          <span
-            key={m}
-            className={`absolute text-[10px] text-slate-400 ${labelTransform(m)}`}
-            style={{ left: `${toPercent(m)}%` }}
-          >
-            {minutesToTime(m)}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
