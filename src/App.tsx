@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, Clock, CheckCircle, XCircle, AlertCircle, MapPin, Users, ChevronDown } from 'lucide-react';
+import { Building2, Clock, CheckCircle, XCircle, AlertCircle, MapPin, Users, ChevronDown, SearchX } from 'lucide-react';
 import {
   evaluateAvailability,
   isDurationWithinLimit,
@@ -7,76 +7,11 @@ import {
   timeToMinutes,
   validateBookingRequest,
   type Booking,
-  type RoomSchedule,
   type ValidationError,
 } from '@/lib/bookingRules';
-
-interface Room extends RoomSchedule {
-  id: string;
-  building: string;
-  capacity: number;
-}
-
-const ROOMS: Room[] = [
-  {
-    id: 'LT101',
-    name: 'Lecture Theatre 101',
-    building: 'Engineering Block A',
-    capacity: 120,
-    blocked: false,
-    bookings: [
-      { start: 480, end: 600, label: 'CS301 Algorithms' },
-      { start: 660, end: 780, label: 'MATH202 Calculus' },
-      { start: 900, end: 960, label: 'CS410 Networks' },
-    ],
-  },
-  {
-    id: 'SR204',
-    name: 'Seminar Room 204',
-    building: 'Arts & Sciences Building',
-    capacity: 30,
-    blocked: false,
-    bookings: [
-      { start: 540, end: 600, label: 'Group Project Meeting' },
-      { start: 720, end: 840, label: 'Philosophy Seminar' },
-      { start: 1080, end: 1140, label: 'Research Discussion' },
-    ],
-  },
-  {
-    id: 'LAB3',
-    name: 'Computer Lab 3',
-    building: 'Technology Hub',
-    capacity: 40,
-    blocked: true,
-    blockedReason: 'Under scheduled maintenance until further notice',
-    bookings: [
-      { start: 600, end: 720, label: 'Web Dev Workshop' },
-    ],
-  },
-  {
-    id: 'CR305',
-    name: 'Conference Room 305',
-    building: 'Administration Centre',
-    capacity: 16,
-    blocked: false,
-    bookings: [
-      { start: 480, end: 540, label: 'Faculty Meeting' },
-      { start: 840, end: 960, label: 'Board Review' },
-      { start: 1200, end: 1320, label: 'Annual Planning' },
-    ],
-  },
-  {
-    id: 'STU1',
-    name: 'Studio Lab 1',
-    building: 'Creative Arts Wing',
-    capacity: 20,
-    blocked: false,
-    bookings: [
-      { start: 570, end: 690, label: 'Design Workshop' },
-      { start: 780, end: 900, label: 'Media Production' },
-    ],
-  },
-];
+import { EQUIPMENT_OPTIONS, ROOMS, type EquipmentItem } from '@/data/rooms';
+import { filterRooms, parseAttendees } from '@/lib/roomFilters';
+import { RoomFilters } from '@/components/RoomFilters';
 
 const CURRENT_TIME = 8 * 60 + 30; // 08:30
 
@@ -86,47 +21,62 @@ export default function App() {
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [result, setResult] = useState<ResultType>(null);
-  const [resultMessage, setResultMessage] = useState('');
+  const [attendeesInput, setAttendeesInput] = useState('');
+  const [requiredEquipment, setRequiredEquipment] = useState<EquipmentItem[]>([]);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [checked, setChecked] = useState(false);
 
-  const selectedRoom = ROOMS.find(r => r.id === selectedRoomId) ?? null;
+  const attendees = parseAttendees(attendeesInput);
+  const visibleRooms = filterRooms(ROOMS, { attendees: attendees.value, equipment: requiredEquipment });
+  const selectedRoom = visibleRooms.find(r => r.id === selectedRoomId) ?? null;
+
+  const outcome = checked && selectedRoom
+    ? evaluateAvailability(selectedRoom, { start: timeToMinutes(startTime), end: timeToMinutes(endTime) })
+    : null;
+  const result: ResultType = outcome?.status ?? null;
+  const resultMessage = outcome?.message ?? '';
 
   const getError = (field: ValidationError['field']) =>
     errors.find(e => e.field === field)?.message ?? null;
 
-  function handleCheck() {
-    setResult(null);
-    setChecked(false);
+  function applyFilters(nextAttendees: string, nextEquipment: EquipmentItem[]) {
+    const nextVisible = filterRooms(ROOMS, {
+      attendees: parseAttendees(nextAttendees).value,
+      equipment: nextEquipment,
+    });
+    if (!nextVisible.some(r => r.id === selectedRoomId)) {
+      setSelectedRoomId('');
+    }
+    setAttendeesInput(nextAttendees);
+    setRequiredEquipment(nextEquipment);
+  }
 
+  function handleToggleEquipment(item: EquipmentItem) {
+    const next = requiredEquipment.includes(item)
+      ? requiredEquipment.filter(i => i !== item)
+      : [...requiredEquipment, item];
+    applyFilters(attendeesInput, next);
+  }
+
+  function handleClearFilters() {
+    applyFilters('', []);
+  }
+
+  function handleCheck() {
     const newErrors = validateBookingRequest(
-      { roomSelected: Boolean(selectedRoomId), startTime, endTime },
+      { roomSelected: Boolean(selectedRoom), startTime, endTime },
       CURRENT_TIME
     );
-    if (newErrors.length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    setErrors([]);
-    setChecked(true);
-
-    const room = ROOMS.find(r => r.id === selectedRoomId)!;
-    const outcome = evaluateAvailability(room, {
-      start: timeToMinutes(startTime),
-      end: timeToMinutes(endTime),
-    });
-    setResult(outcome.status);
-    setResultMessage(outcome.message);
+    setErrors(newErrors);
+    setChecked(newErrors.length === 0);
   }
 
   function handleReset() {
     setSelectedRoomId('');
     setStartTime('');
     setEndTime('');
-    setResult(null);
-    setResultMessage('');
+    setAttendeesInput('');
+    setRequiredEquipment([]);
     setErrors([]);
     setChecked(false);
   }
@@ -160,6 +110,18 @@ export default function App() {
           </div>
 
           <div className="p-4 sm:p-5 space-y-5">
+            <RoomFilters
+              attendeesInput={attendeesInput}
+              attendeesError={attendees.error}
+              equipmentOptions={EQUIPMENT_OPTIONS}
+              selectedEquipment={requiredEquipment}
+              matchCount={visibleRooms.length}
+              totalCount={ROOMS.length}
+              onAttendeesChange={value => applyFilters(value, requiredEquipment)}
+              onToggleEquipment={handleToggleEquipment}
+              onClear={handleClearFilters}
+            />
+
             {/* Room selector */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5">
@@ -168,11 +130,12 @@ export default function App() {
               <div className="relative">
                 <select
                   value={selectedRoomId}
-                  onChange={e => { setSelectedRoomId(e.target.value); setChecked(false); setResult(null); setErrors([]); }}
+                  disabled={visibleRooms.length === 0}
+                  onChange={e => { setSelectedRoomId(e.target.value); setErrors([]); }}
                   className={`w-full appearance-none bg-slate-50 border rounded-lg px-3 py-2.5 text-sm text-slate-800 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${getError('general') ? 'border-red-400' : 'border-slate-200'}`}
                 >
-                  <option value="">-- Select a room --</option>
-                  {ROOMS.map(r => (
+                  <option value="">{visibleRooms.length === 0 ? '-- No matching rooms --' : '-- Select a room --'}</option>
+                  {visibleRooms.map(r => (
                     <option key={r.id} value={r.id}>
                       {r.name} {r.blocked ? '(Blocked)' : ''}
                     </option>
@@ -197,7 +160,7 @@ export default function App() {
                 <input
                   type="time"
                   value={startTime}
-                  onChange={e => { setStartTime(e.target.value); setChecked(false); setResult(null); setErrors([]); }}
+                  onChange={e => { setStartTime(e.target.value); setChecked(false); setErrors([]); }}
                   className={`w-full bg-slate-50 border rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${getError('start') ? 'border-red-400' : 'border-slate-200'}`}
                 />
                 {getError('start') && (
@@ -214,7 +177,7 @@ export default function App() {
                 <input
                   type="time"
                   value={endTime}
-                  onChange={e => { setEndTime(e.target.value); setChecked(false); setResult(null); setErrors([]); }}
+                  onChange={e => { setEndTime(e.target.value); setChecked(false); setErrors([]); }}
                   className={`w-full bg-slate-50 border rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${getError('end') ? 'border-red-400' : 'border-slate-200'}`}
                 />
                 {getError('end') && (
@@ -372,6 +335,21 @@ export default function App() {
                 )}
               </div>
             </>
+          ) : visibleRooms.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-10 flex flex-col items-center justify-center text-center min-h-64">
+              <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                <SearchX className="w-7 h-7 text-slate-400" />
+              </div>
+              <p className="text-slate-600 font-medium text-sm">No rooms match your requirements</p>
+              <p className="text-slate-400 text-xs mt-1 max-w-xs">Try a lower attendee count or fewer equipment items.</p>
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                Clear filters
+              </button>
+            </div>
           ) : (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-10 flex flex-col items-center justify-center text-center min-h-64">
               <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">

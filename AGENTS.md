@@ -6,8 +6,9 @@ Guidance for agents working on the Smart Campus Room Availability prototype.
 
 - React 18 + TypeScript + Vite single-page app.
 - Main application: `src/App.tsx`. Entry: `src/main.tsx`. Styles: Tailwind via `src/index.css`.
-- Booking validation and availability logic currently live inside `src/App.tsx` (`handleCheck`, `overlaps`, `timeToMinutes`, `minutesToTime`).
-- Room fixtures (`ROOMS`) and `CURRENT_TIME` (08:30) are defined in `src/App.tsx`.
+- Booking validation and availability logic live in `src/lib/bookingRules.ts`.
+- Room catalog (`ROOMS`, `EQUIPMENT_OPTIONS`) is in `src/data/rooms.ts`. `CURRENT_TIME` (08:30) is defined in `src/App.tsx`.
+- Room filters (capacity, equipment) are pure functions in `src/lib/roomFilters.ts`. The filter panel is `src/components/RoomFilters.tsx`.
 - No backend, database, authentication, or booking creation. The data is fictional and static.
 
 ## Commands
@@ -23,8 +24,8 @@ Extract pure booking validation and time-related business rules into `src/lib/bo
 
 Target boundary:
 - `src/lib/bookingRules.ts` holds pure functions with no React, DOM, or state imports.
-- `src/App.tsx` keeps React state, event handlers, JSX, `DayTimeline`, and the fixture data.
-- Fixtures and booking data stay in `src/App.tsx` unless a move is needed for the boundary. Their values must not change.
+- `src/App.tsx` keeps React state, event handlers, JSX, and `DayTimeline`.
+- Room catalog and booking data live in `src/data/rooms.ts`. Existing room values must not change unless a requirement says so.
 
 ## Behavior that must be preserved
 
@@ -44,7 +45,8 @@ Availability (only runs when validation passes):
 
 Other UI behavior:
 - Duration hint appears when start and end are set and the duration is greater than 0 and at most 120 minutes.
-- Changing any input or the room clears the previous result and errors.
+- Changing a time or the attendees/equipment filters clears the previous result and errors.
+- Changing the selected room re-runs the check against the new room's bookings when a check is active. The result is derived from the selected room and times, not stored separately.
 - Reset clears all fields and results.
 - The timeline range (07:00 to 22:00) is a display setting, not a booking rule.
 
