@@ -42,9 +42,22 @@ export function minutesToTime(minutes: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+// export function timeToMinutes(time: string): number {
+//   const [h, m] = time.split(':').map(Number);
+//   return h * 60 + m;
+// }
+
 export function timeToMinutes(time: string): number {
-  const [h, m] = time.split(':').map(Number);
-  return h * 60 + m;
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+
+  if (!match) {
+    throw new Error('Invalid time format. Expected HH:MM.');
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+
+  return hours * 60 + minutes;
 }
 
 export function overlaps(start: number, end: number, booking: Booking): boolean {
