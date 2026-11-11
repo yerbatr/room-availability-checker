@@ -9,8 +9,9 @@ Guidance for agents working on the Smart Campus Room Availability prototype.
 - Screen and state: `src/App.tsx` (filter and time state, handlers, page layout, room details).
 - Shared UI: `src/components/` (`RoomFilters`, `DayTimeline`, `FieldError`, `ResultBanner`, `EmptyState`, `formStyles`).
 - Pure rules: `src/lib/bookingRules.ts` (time parsing, validation, overlap, duration, availability) and `src/lib/roomFilters.ts` (capacity and equipment filters, attendee parsing, selection after filtering).
-- Room catalog and booking data: `src/data/rooms.ts`. `CURRENT_TIME` (08:30) is defined in `src/App.tsx`.
+- Room catalog and booking data: `src/data/rooms.ts` — five fictional rooms. The existing catalog must be preserved; do not add, remove, or replace rooms unless a requirement explicitly asks for it. `CURRENT_TIME` (08:30) is defined in `src/App.tsx`.
 - No backend, database, authentication, or booking creation. The data is fictional and static.
+- Risk register: `docs/risk-register.md`. Review it before changes that touch time parsing, `.gitignore`, or the timeline range.
 
 ## Commands
 
@@ -26,6 +27,17 @@ Guidance for agents working on the Smart Campus Room Availability prototype.
 - `src/App.tsx` owns React state and event handlers. Time strings are parsed once per render and the parsed minutes are reused for availability, the duration hint, and the timeline.
 - Room catalog and booking data stay in `src/data/rooms.ts`. Existing values must not change unless a requirement says so.
 - Do not introduce Context, Redux, or other state libraries for this single-screen app.
+
+## Acceptance criteria (AC1–AC6)
+
+These six criteria are the acceptance gate. Any change must preserve all of them. The detailed behavior rules in the next section expand on these.
+
+- **AC1 — Time validation:** Reject invalid or past start/end time requests. Start and end are required, within 0–1440 minutes, start must be strictly after the current time, and end must be strictly after start.
+- **AC2 — Booking duration:** Enforce the maximum booking duration of 120 minutes (`MAX_BOOKING_DURATION`).
+- **AC3 — Blocked rooms:** Reject booking requests for a blocked room. The blocked reason is shown.
+- **AC4 — Booking conflicts:** Reject requests that overlap existing bookings. Overlap is `start < booking.end && end > booking.start`; endpoint-touching intervals are allowed.
+- **AC5 — Data integrity:** Availability checks must not modify the original booking data, in memory or on disk. Rule functions stay pure.
+- **AC6 — User interface:** Show clear availability feedback (available/unavailable with details) and keep the layout usable on desktop and mobile.
 
 ## Behavior that must be preserved
 
@@ -64,6 +76,7 @@ Other UI behavior:
 - Keep rule functions pure: same inputs, same outputs, no side effects.
 - Do not introduce Strategy or Adapter patterns. There is one availability policy and one data format.
 - Do not add a backend, database, authentication, or booking creation.
+- Do not introduce secrets, API keys, credentials, or `.env` files. If a secret is needed, stop and ask for human approval.
 - Vitest is the only test runner. Do not add another test framework or install new dependencies without approval.
 - Do not edit `dist/` or `.bolt/`.
 - Prefer the `@/` import alias (for example `@/lib/bookingRules`), which maps to `src/`.
@@ -84,7 +97,7 @@ Other UI behavior:
 
 ## Verification
 
-- `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` must pass.
+- `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` must all pass before proposing a change for acceptance. Do not propose acceptance until every one of them has been run and reported.
 - Manually check these cases in the UI:
   - Empty room, empty start, empty end.
   - Start at or before 08:30.
