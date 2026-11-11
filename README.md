@@ -36,13 +36,13 @@ A React and TypeScript web application for checking room availability in a ficti
 Clone the repository:
 
 ```bash
-git clone <https://github.com/yerbatr/room-availability-checker.git>
+git clone https://github.com/yerbatr/room-availability-checker.git
 ```
 
 Navigate to the project directory:
 
 ```bash
-cd <room-availability-checker>
+cd room-availability-checker
 ```
 
 Install dependencies:
@@ -118,6 +118,13 @@ The application displays an empty state when no rooms match the selected require
 
 ```text
 src/
+├── components/
+│   ├── DayTimeline.tsx
+│   ├── EmptyState.tsx
+│   ├── FieldError.tsx
+│   ├── formStyles.ts
+│   ├── ResultBanner.tsx
+│   └── RoomFilters.tsx
 ├── data/
 │   └── rooms.ts
 ├── lib/
