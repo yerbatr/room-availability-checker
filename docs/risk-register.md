@@ -1,0 +1,6 @@
+ID	Category	Risk / Cause and consequence	Affected component	Evidence	L	I	Score
+R1	Correctness	Malformed time input is not validated. Invalid values such as NaN may affect booking validation.	bookingRules.ts — timeToMinutes()	Function converts split values using Number() without format or range checks.	3	3	9
+R4	Correctness	Fixed CURRENT_TIME makes the application always behave as if the time is 08:30.	App.tsx — CURRENT_TIME	Constant is reused in validation, header and timeline.	3	2	6
+R7	Security / Agent operations	Missing .env.* ignore pattern may allow environment-specific files to be committed accidentally.	.gitignore	.env is ignored, but .env.* is not.	2	3	6
+R6	Correctness	Bookings outside the 07:00–22:00 timeline range may become invisible because their coordinates are clamped.	DayTimeline.tsx — toPercent()	A 23:00–23:30 interval produces zero visual width.	2	2	4
+R5	Maintainability	Array indexes used as React keys may cause incorrect reconciliation if booking items are reordered or removed.	App.tsx, DayTimeline.tsx	Booking lists use key={i}.	2	1	2
