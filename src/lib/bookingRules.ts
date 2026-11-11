@@ -48,7 +48,7 @@ export function minutesToTime(minutes: number): string {
 // }
 
 export function timeToMinutes(time: string): number {
-  const match = /^(-?\d{1,2}):([0-5]\d)$/.exec(time);
+  const match = /^([01]\d|2[0-4]):([0-5]\d)$/.exec(time);
 
   if (!match) {
     throw new Error('Invalid time format. Expected HH:MM.');
@@ -85,8 +85,23 @@ export function validateBookingRequest(request: BookingRequest, currentTime: num
     errors.push({ field: 'general', message: 'Please select a room to check.' });
   }
 
-  const startMins = request.startTime ? timeToMinutes(request.startTime) : -1;
-  const endMins = request.endTime ? timeToMinutes(request.endTime) : -1;
+  let startMins = -1;
+  if (request.startTime) {
+    try {
+      startMins = timeToMinutes(request.startTime);
+    } catch {
+      startMins = -1;
+    }
+  }
+
+  let endMins = -1;
+  if (request.endTime) {
+    try {
+      endMins = timeToMinutes(request.endTime);
+    } catch {
+      endMins = -1;
+    }
+  }
 
   if (!request.startTime) {
     errors.push({ field: 'start', message: 'Start time is required.' });

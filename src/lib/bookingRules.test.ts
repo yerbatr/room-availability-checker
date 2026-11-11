@@ -55,7 +55,7 @@ describe('time conversion', () => {
     expect(timeToMinutes('24:00')).toBe(1440);
   });
 
-  it.each(['12', 'abc', '', '25:99', '24:01', '12:60'])(
+  it.each(['12', 'abc', '', '25:99', '24:01', '24:30', '12:60', '1:30', '99:59', '-1:00'])(
     'rejects malformed time input: %s',
     (time) => {
       expect(() => timeToMinutes(time)).toThrow(
