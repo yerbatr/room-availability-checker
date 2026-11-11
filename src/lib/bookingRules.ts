@@ -48,7 +48,7 @@ export function minutesToTime(minutes: number): string {
 // }
 
 export function timeToMinutes(time: string): number {
-  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+  const match = /^(-?\d{1,2}):([0-5]\d)$/.exec(time);
 
   if (!match) {
     throw new Error('Invalid time format. Expected HH:MM.');
@@ -56,6 +56,11 @@ export function timeToMinutes(time: string): number {
 
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
+
+  // 24:00 is valid, but 24:01 and later are not.
+  if (hours === 24 && minutes !== 0) {
+    throw new Error('Invalid time format. Expected HH:MM.');
+  }
 
   return hours * 60 + minutes;
 }
