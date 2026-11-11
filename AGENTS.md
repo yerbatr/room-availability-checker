@@ -69,6 +69,19 @@ Other UI behavior:
 - Prefer the `@/` import alias (for example `@/lib/bookingRules`), which maps to `src/`.
 - Use Tailwind classes for styling and lucide-react for icons, as already used in the project.
 
+## Agent Operations and Safety
+
+- Work only within the existing fictional Smart Campus Room Availability prototype.
+- Do not add external APIs, integrations, services, or network-dependent features.
+- Do not deploy, publish, or externally expose the application.
+- Do not push commits or perform external repository actions without explicit human approval.
+- Preserve all existing room catalog and booking data unless a requirement explicitly requests a change.
+- For parallel or background agent tasks, use isolated branches or worktrees. Do not allow multiple agents to modify the same files concurrently.
+- Do not overwrite or discard another contributor's changes. Stop and report conflicts before resolving them.
+- Before proposing a change as complete, run the relevant tests and verification commands and report their actual results.
+- Do not claim that a test, build, or verification passed unless it was actually executed successfully.
+- Ask for human approval before adding dependencies, changing project scope, or performing actions outside the local development environment.
+
 ## Verification
 
 - `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` must pass.
