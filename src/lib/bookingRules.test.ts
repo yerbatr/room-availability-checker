@@ -1,3 +1,4 @@
+
 import { describe, expect, it } from 'vitest';
 import {
   MAX_BOOKING_DURATION,
@@ -53,6 +54,15 @@ describe('time conversion', () => {
     expect(timeToMinutes('23:59')).toBe(1439);
     expect(timeToMinutes('24:00')).toBe(1440);
   });
+
+  it.each(['12', 'abc', '', '25:99', '24:01', '12:60'])(
+    'rejects malformed time input: %s',
+    (time) => {
+      expect(() => timeToMinutes(time)).toThrow(
+        'Invalid time format. Expected HH:MM.'
+      );
+    }
+  );
 
   it('formats minutes as zero-padded HH:MM', () => {
     expect(minutesToTime(0)).toBe('00:00');
