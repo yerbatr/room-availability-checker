@@ -1,13 +1,20 @@
 import { useState } from 'react';
-import { AlertCircle, Building2, ChevronDown, Clock, MapPin, SearchX, Users } from 'lucide-react';
+import { AlertCircle, Building2, ChevronDown, Clock, MapPin, SearchX, Sparkles, Users } from 'lucide-react';
 import {
   evaluateAvailability,
   getDurationHint,
   minutesToTime,
   timeToMinutes,
   validateBookingRequest,
+  type Booking,
   type ValidationError,
 } from '@/lib/bookingRules';
+import {
+  EXPLANATION_FALLBACK_MESSAGE,
+  generateExplanation,
+  type ExplanationInput,
+  type ExplanationResult,
+} from '@/lib/explanationAdapter';
 import { EQUIPMENT_OPTIONS, ROOMS, type EquipmentItem } from '@/data/rooms';
 import { filterRooms, keepSelectedRoomId, parseAttendees } from '@/lib/roomFilters';
 import { DayTimeline } from '@/components/DayTimeline';
@@ -27,6 +34,9 @@ export default function App() {
   const [requiredEquipment, setRequiredEquipment] = useState<EquipmentItem[]>([]);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [checked, setChecked] = useState(false);
+  const [explanation, setExplanation] = useState<ExplanationResult | null>(null);
+  const [explanationError, setExplanationError] = useState<string | null>(null);
+  const [explaining, setExplaining] = useState(false);
 
   const attendees = parseAttendees(attendeesInput);
   const visibleRooms = filterRooms(ROOMS, { attendees: attendees.value, equipment: requiredEquipment });
@@ -38,9 +48,61 @@ export default function App() {
     ? getDurationHint(startMinutes, endMinutes)
     : null;
 
+  const hasValidationErrors = checked && errors.length > 0;
+
   const outcome = checked && selectedRoom && startMinutes !== null && endMinutes !== null
     ? evaluateAvailability(selectedRoom, { start: startMinutes, end: endMinutes })
     : null;
+
+  function findConflictBooking(room: typeof selectedRoom, start: number, end: number): Booking | undefined {
+    if (!room) return undefined;
+    return room.bookings.find(b => start < b.end && end > b.start);
+  }
+
+  function buildExplanationInput(): ExplanationInput {
+    if (!selectedRoom || startMinutes === null || endMinutes === null) {
+      return {
+        roomId: selectedRoom?.id,
+        roomName: selectedRoom?.name,
+        status: 'unavailable',
+        validationErrors: errors.map(e => ({ field: e.field, message: e.message })),
+      };
+    }
+
+    const conflict = outcome?.status === 'unavailable' && !selectedRoom.blocked
+      ? findConflictBooking(selectedRoom, startMinutes, endMinutes)
+      : undefined;
+
+    return {
+      roomId: selectedRoom.id,
+      roomName: selectedRoom.name,
+      status: outcome?.status,
+      startMinutes,
+      endMinutes,
+      blocked: selectedRoom.blocked,
+      blockedReason: selectedRoom.blocked ? selectedRoom.blockedReason ?? null : null,
+      conflict: conflict ? { label: conflict.label, start: conflict.start, end: conflict.end } : null,
+    };
+  }
+
+  async function handleExplain() {
+    setExplaining(true);
+    setExplanationError(null);
+    try {
+      const result = await generateExplanation(buildExplanationInput());
+      setExplanation(result);
+    } catch {
+      setExplanation(null);
+      setExplanationError(EXPLANATION_FALLBACK_MESSAGE);
+    } finally {
+      setExplaining(false);
+    }
+  }
+
+  function clearExplanation() {
+    setExplanation(null);
+    setExplanationError(null);
+  }
 
   const roomError = errors.find(e => e.field === 'general')?.message ?? null;
   const startError = errors.find(e => e.field === 'start')?.message ?? null;
@@ -52,6 +114,7 @@ export default function App() {
       equipment: nextEquipment,
     });
     setSelectedRoomId(keepSelectedRoomId(selectedRoomId, nextVisible));
+    clearExplanation();
     setAttendeesInput(nextAttendees);
     setRequiredEquipment(nextEquipment);
   }
@@ -74,6 +137,11 @@ export default function App() {
     );
     setErrors(newErrors);
     setChecked(newErrors.length === 0);
+    clearExplanation();
+  }
+
+  function canExplain(): boolean {
+    return checked && (outcome !== null || hasValidationErrors);
   }
 
   function handleReset() {
@@ -84,6 +152,7 @@ export default function App() {
     setRequiredEquipment([]);
     setErrors([]);
     setChecked(false);
+    clearExplanation();
   }
 
   return (
@@ -136,7 +205,7 @@ export default function App() {
                 <select
                   value={selectedRoomId}
                   disabled={visibleRooms.length === 0}
-                  onChange={e => { setSelectedRoomId(e.target.value); setErrors([]); }}
+                  onChange={e => { setSelectedRoomId(e.target.value); setErrors([]); clearExplanation(); }}
                   className={`${fieldInputClass(Boolean(roomError))} appearance-none pr-8`}
                 >
                   <option value="">{visibleRooms.length === 0 ? '-- No matching rooms --' : '-- Select a room --'}</option>
@@ -160,7 +229,7 @@ export default function App() {
                 <input
                   type="time"
                   value={startTime}
-                  onChange={e => { setStartTime(e.target.value); setChecked(false); setErrors([]); }}
+                  onChange={e => { setStartTime(e.target.value); setChecked(false); setErrors([]); clearExplanation(); }}
                   className={fieldInputClass(Boolean(startError))}
                 />
                 {startError && <FieldError message={startError} />}
@@ -172,7 +241,7 @@ export default function App() {
                 <input
                   type="time"
                   value={endTime}
-                  onChange={e => { setEndTime(e.target.value); setChecked(false); setErrors([]); }}
+                  onChange={e => { setEndTime(e.target.value); setChecked(false); setErrors([]); clearExplanation(); }}
                   className={fieldInputClass(Boolean(endError))}
                 />
                 {endError && <FieldError message={endError} />}
@@ -205,6 +274,39 @@ export default function App() {
 
             {/* Result */}
             {outcome && <ResultBanner status={outcome.status} message={outcome.message} />}
+
+            {/* Explain availability */}
+            {canExplain() && (
+              <div className="space-y-2">
+                <button
+                  onClick={handleExplain}
+                  disabled={explaining}
+                  className="w-full flex items-center justify-center gap-2 bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 active:bg-blue-100 disabled:opacity-60 disabled:cursor-not-allowed text-sm font-semibold rounded-lg py-2.5 transition-colors"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {explaining ? 'Generating explanation…' : 'Explain Availability'}
+                </button>
+
+                {explanation && (
+                  <div className="rounded-xl p-4 bg-blue-50 border border-blue-200">
+                    <p className="text-xs font-semibold text-blue-800 uppercase tracking-wide flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Explanation
+                    </p>
+                    <p className="text-xs mt-1.5 leading-relaxed text-blue-900">{explanation.explanation}</p>
+                    <p className="text-[10px] mt-2 text-blue-600 font-mono">
+                      Reason: {explanation.reasonCode}
+                    </p>
+                  </div>
+                )}
+
+                {explanationError && (
+                  <div className="rounded-xl p-4 bg-amber-50 border border-amber-200">
+                    <p className="text-xs leading-relaxed text-amber-800">{explanationError}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
 

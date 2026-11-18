@@ -9,6 +9,7 @@ Guidance for agents working on the Smart Campus Room Availability prototype.
 - Screen and state: `src/App.tsx` (filter and time state, handlers, page layout, room details).
 - Shared UI: `src/components/` (`RoomFilters`, `DayTimeline`, `FieldError`, `ResultBanner`, `EmptyState`, `formStyles`).
 - Pure rules: `src/lib/bookingRules.ts` (time parsing, validation, overlap, duration, availability) and `src/lib/roomFilters.ts` (capacity and equipment filters, attendee parsing, selection after filtering).
+- Explanation adapter: `src/lib/explanationAdapter.ts` — a mock AI explanation service that turns structured availability data into human-readable text with a reason code. It never determines availability itself; the deterministic checker in `bookingRules.ts` remains the single source of truth. Contract: `docs/feature-contract.md`.
 - Room catalog and booking data: `src/data/rooms.ts` — five fictional rooms. The existing catalog must be preserved; do not add, remove, or replace rooms unless a requirement explicitly asks for it. `CURRENT_TIME` (08:30) is defined in `src/App.tsx`.
 - No backend, database, authentication, or booking creation. The data is fictional and static.
 - Risk register: `docs/risk-register.md`. Review it before changes that touch time parsing, `.gitignore`, or the timeline range.
@@ -74,7 +75,7 @@ Other UI behavior:
 - Do not change any user-visible text, layout, styling, or behavior unless a requirement asks for it.
 - Define the maximum booking duration (120) in one exported constant in `src/lib/bookingRules.ts`. Remove every hard-coded copy.
 - Keep rule functions pure: same inputs, same outputs, no side effects.
-- Do not introduce Strategy or Adapter patterns. There is one availability policy and one data format.
+- Do not introduce Strategy or Adapter patterns for availability logic. The one exception is the mock LLM explanation adapter (`src/lib/explanationAdapter.ts`), which only formats explanations from existing results and must never compute availability.
 - Do not add a backend, database, authentication, or booking creation.
 - Do not introduce secrets, API keys, credentials, or `.env` files. If a secret is needed, stop and ask for human approval.
 - Vitest is the only test runner. Do not add another test framework or install new dependencies without approval.
