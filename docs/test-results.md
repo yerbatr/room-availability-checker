@@ -33,6 +33,22 @@ Automated results below come from `npm test` (118 tests, all passing). Nothing h
 
 Counts: 16 scenario assertions-groups in this table; total suite 118 tests, 0 failures.
 
+## Task #07 remediation tests (added 2026-11-18)
+
+New suite `src/lib/checkFlow.test.ts` (14 tests, all passing) covers the three code-review fixes:
+
+| # | Test case | Expected result | Observed result | Status |
+|---|-----------|-----------------|-----------------|--------|
+| R1 (C-1) | Explain gate when validation failed (`canShowExplanation(false, 2)`) | Button gate opens with errors and no result | `true` | PASS |
+| R1b (C-1) | Explain gate after a successful check | Button gate opens | `true` | PASS |
+| R1c (C-1) | Explain gate before any check attempt | Button hidden | `false` | PASS |
+| R2 (Q-1) | Conflict lookup reuses `findConflict` (`findExplanationConflict`) | Returns the conflicting booking for an overlap | "CS301 Algorithms" | PASS |
+| R2b (Q-1) | Endpoint-touching intervals via the shared rule | Not a conflict | `undefined` | PASS |
+| R2c (Q-1) | Available result / no room / blocked room | No conflict context for the explanation | `undefined` in all three cases | PASS |
+| R3 (C-2) | `createRequestTokenTracker` — newest request current, invalidated request stale, newer supersedes older, fabricated ids never current | Stale async responses can be detected and discarded | All token assertions hold, including after an awaited microtask | PASS |
+
+Counts: 14 new tests; total suite 132 tests, 0 failures.
+
 ## Deterministic decision integrity (summary)
 
 - The only code path that decides availability is `evaluateAvailability` in `src/lib/bookingRules.ts`, called by `src/App.tsx` from the selected room and parsed times. The result is derived per render, not stored, so no adapter can persist a change to it.
@@ -58,7 +74,7 @@ Screenshot evidence: the temporary development-only failure-simulation toggle th
 
 | Command | Result |
 |---|---|
-| `npm test` | 5 files, 118 tests passed, 0 failed |
+| `npm test` | 6 files, 132 tests passed, 0 failed (was 5 files / 118 tests before Task #07) |
 | `npm run typecheck` | exit 0 |
 | `npm run lint` | exit 0 |
 | `npm run build` | built successfully (dist emitted), exit 0 |

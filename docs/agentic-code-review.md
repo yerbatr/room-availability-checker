@@ -3,6 +3,20 @@
 Date: 2026-11-18
 Mode: Independent, read-only AI code review. No source files, tests, dependencies, configuration, or existing documentation were modified. The only file created is this report.
 
+## Remediation status (updated 2026-11-18, Task #07)
+
+| ID | Severity | Status | Remediation |
+|----|----------|--------|-------------|
+| C-1 | Medium | **FIXED** | `src/App.tsx` now sets `checked` on every Check attempt (not only when validation passes) and gates the Explain button through `canShowExplanation` in `src/lib/checkFlow.ts`, so the button appears after failed validation and the `INVALID_REQUEST` explanation is reachable. `hasValidationErrors` (always false before) was removed. |
+| C-2 | Low | **FIXED** | `src/App.tsx` tracks an explanation request token (`createRequestTokenTracker` in `src/lib/checkFlow.ts`). Every `clearExplanation` (any room/time/filter change, reset, new check) invalidates the token; a late-resolving or late-rejecting `generateExplanation` call detects it is no longer current and discards its result, including not clearing `explaining`. |
+| Q-1 | Low | **FIXED** | The inline overlap predicate in `findConflictBooking` was replaced by `findExplanationConflict` (`src/lib/checkFlow.ts`), which delegates to `findConflict` from `src/lib/bookingRules.ts`. The overlap rule now has a single definition. |
+| C-3 | Low | **Accepted as-is** | Documented boundary nuance, no user-visible defect; no change made. |
+| Q-2 | Low | **Deferred** | Cosmetic dead code in `bookingRules.ts`; not fixed in Task #07 (out of selected scope, and the rules module was to remain untouched). |
+
+Regression tests for all three fixes: `src/lib/checkFlow.test.ts` (14 tests). Verification: `npm test` (6 files, 132 tests, 0 failures), `npm run typecheck`, `npm run lint`, `npm run build` — all exit 0 (2026-11-18).
+
+The findings below are the original review text, retained unchanged for the record.
+
 ## 1. Scope and Methodology
 
 ### Documents read for context
