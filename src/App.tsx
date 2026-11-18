@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AlertCircle, Building2, ChevronDown, Clock, MapPin, SearchX, Sparkles, Users } from 'lucide-react';
 import {
   evaluateAvailability,
@@ -17,6 +17,7 @@ import {
 } from '@/lib/explanationAdapter';
 import { EQUIPMENT_OPTIONS, ROOMS, type EquipmentItem } from '@/data/rooms';
 import { filterRooms, keepSelectedRoomId, parseAttendees } from '@/lib/roomFilters';
+import { canShowExplanation, findExplanationConflict, createRequestTokenTracker } from '@/lib/checkFlow';
 import { DayTimeline } from '@/components/DayTimeline';
 import { EmptyState } from '@/components/EmptyState';
 import { FieldError } from '@/components/FieldError';
@@ -37,6 +38,7 @@ export default function App() {
   const [explanation, setExplanation] = useState<ExplanationResult | null>(null);
   const [explanationError, setExplanationError] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
+  const explanationTokens = useRef(createRequestTokenTracker());
 
   const attendees = parseAttendees(attendeesInput);
   const visibleRooms = filterRooms(ROOMS, { attendees: attendees.value, equipment: requiredEquipment });
@@ -48,15 +50,12 @@ export default function App() {
     ? getDurationHint(startMinutes, endMinutes)
     : null;
 
-  const hasValidationErrors = checked && errors.length > 0;
-
   const outcome = checked && selectedRoom && startMinutes !== null && endMinutes !== null
     ? evaluateAvailability(selectedRoom, { start: startMinutes, end: endMinutes })
     : null;
 
   function findConflictBooking(room: typeof selectedRoom, start: number, end: number): Booking | undefined {
-    if (!room) return undefined;
-    return room.bookings.find(b => start < b.end && end > b.start);
+    return findExplanationConflict(room, outcome?.status, start, end);
   }
 
   function buildExplanationInput(): ExplanationInput {
@@ -86,22 +85,29 @@ export default function App() {
   }
 
   async function handleExplain() {
+    const requestId = explanationTokens.current.nextRequest();
     setExplaining(true);
     setExplanationError(null);
     try {
       const result = await generateExplanation(buildExplanationInput());
+      if (!explanationTokens.current.isCurrent(requestId)) return;
       setExplanation(result);
     } catch {
+      if (!explanationTokens.current.isCurrent(requestId)) return;
       setExplanation(null);
       setExplanationError(EXPLANATION_FALLBACK_MESSAGE);
     } finally {
-      setExplaining(false);
+      if (explanationTokens.current.isCurrent(requestId)) {
+        setExplaining(false);
+      }
     }
   }
 
   function clearExplanation() {
+    explanationTokens.current.invalidate();
     setExplanation(null);
     setExplanationError(null);
+    setExplaining(false);
   }
 
   const roomError = errors.find(e => e.field === 'general')?.message ?? null;
@@ -136,12 +142,12 @@ export default function App() {
       CURRENT_TIME
     );
     setErrors(newErrors);
-    setChecked(newErrors.length === 0);
+    setChecked(true);
     clearExplanation();
   }
 
   function canExplain(): boolean {
-    return checked && (outcome !== null || hasValidationErrors);
+    return checked && canShowExplanation(outcome !== null, checked ? errors.length : 0);
   }
 
   function handleReset() {
