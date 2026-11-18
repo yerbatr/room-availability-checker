@@ -37,6 +37,8 @@ export default function App() {
   const [explanation, setExplanation] = useState<ExplanationResult | null>(null);
   const [explanationError, setExplanationError] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
+  // Development-only hook for testing the fallback path; never set in production builds.
+  const [simulateExplanationFailure, setSimulateExplanationFailure] = useState(false);
 
   const attendees = parseAttendees(attendeesInput);
   const visibleRooms = filterRooms(ROOMS, { attendees: attendees.value, equipment: requiredEquipment });
@@ -89,6 +91,9 @@ export default function App() {
     setExplaining(true);
     setExplanationError(null);
     try {
+      if (simulateExplanationFailure) {
+        throw new Error('Explanation adapter failure: simulated (development only).');
+      }
       const result = await generateExplanation(buildExplanationInput());
       setExplanation(result);
     } catch {
@@ -271,6 +276,23 @@ export default function App() {
                 Reset
               </button>
             </div>
+
+            {/* Development-only failure simulation */}
+            {import.meta.env.DEV && (
+              <label className="flex items-start gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-500 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={simulateExplanationFailure}
+                  onChange={e => { setSimulateExplanationFailure(e.target.checked); clearExplanation(); }}
+                  className="mt-0.5 w-4 h-4 flex-shrink-0 accent-slate-500 cursor-pointer"
+                />
+                <span>
+                  <span className="font-semibold text-slate-600">Dev only:</span>{' '}
+                  simulate explanation adapter failure. The next "Explain Availability" click will
+                  reject and show the fallback message — the availability result above stays unchanged.
+                </span>
+              </label>
+            )}
 
             {/* Result */}
             {outcome && <ResultBanner status={outcome.status} message={outcome.message} />}
