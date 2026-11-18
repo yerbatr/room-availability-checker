@@ -42,9 +42,27 @@ export function minutesToTime(minutes: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+// export function timeToMinutes(time: string): number {
+//   const [h, m] = time.split(':').map(Number);
+//   return h * 60 + m;
+// }
+
 export function timeToMinutes(time: string): number {
-  const [h, m] = time.split(':').map(Number);
-  return h * 60 + m;
+  const match = /^([01]\d|2[0-4]):([0-5]\d)$/.exec(time);
+
+  if (!match) {
+    throw new Error('Invalid time format. Expected HH:MM.');
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+
+  // 24:00 is valid, but 24:01 and later are not.
+  if (hours === 24 && minutes !== 0) {
+    throw new Error('Invalid time format. Expected HH:MM.');
+  }
+
+  return hours * 60 + minutes;
 }
 
 export function overlaps(start: number, end: number, booking: Booking): boolean {
@@ -67,8 +85,23 @@ export function validateBookingRequest(request: BookingRequest, currentTime: num
     errors.push({ field: 'general', message: 'Please select a room to check.' });
   }
 
-  const startMins = request.startTime ? timeToMinutes(request.startTime) : -1;
-  const endMins = request.endTime ? timeToMinutes(request.endTime) : -1;
+  let startMins = -1;
+  if (request.startTime) {
+    try {
+      startMins = timeToMinutes(request.startTime);
+    } catch {
+      startMins = -1;
+    }
+  }
+
+  let endMins = -1;
+  if (request.endTime) {
+    try {
+      endMins = timeToMinutes(request.endTime);
+    } catch {
+      endMins = -1;
+    }
+  }
 
   if (!request.startTime) {
     errors.push({ field: 'start', message: 'Start time is required.' });
