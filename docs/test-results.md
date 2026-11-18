@@ -40,19 +40,19 @@ Counts: 16 scenario assertions-groups in this table; total suite 118 tests, 0 fa
 - On adapter failure or timeout, `App.tsx`'s handler catches the rejection and shows `EXPLANATION_FALLBACK_MESSAGE` while the availability banner (`outcome`) remains rendered, because the banner is derived independently of explanation state. The catch path is exercised by F4; the pending-promise case by F3.
 - The timeout/failure simulations are mock-level (fake timers, rejected/never-settling promises) because the app must run with no network at all. They exercise the same contract a real timeout would.
 
-## Manual UI verification — NOT performed (no browser in this environment)
+## Manual UI verification — performed by the user (2026-11-18)
 
-These must be captured manually in a running browser. No observed result is recorded for them.
+All five manual cases M1–M5 were executed in a running browser by the user and reported as passing.
 
-| # | Manual case | Steps | Expected |
-|---|-------------|-------|----------|
-| M1 | Available room screenshot | Select "Lecture Theatre 101", start 10:30, end 11:00, Check | Green banner "…you're good to go!", timeline highlights the slot |
-| M2 | Booking conflict screenshot | Same room, start 09:00, end 09:30, Check | Red banner naming CS301 Algorithms 08:00 – 10:00 |
-| M3 | Blocked room screenshot | Select "Computer Lab 3 (Blocked)", any valid interval, Check | Red banner with the maintenance reason; Blocked chip on the room card |
-| M4 | Invalid/past time screenshot | Start 08:00 (past) or 25:00 (invalid), Check | Field error under Start Time |
-| M5 | Explanation failure/fallback screenshot | Run a successful check, then block or break the adapter (e.g. via devtools breakpoint causing rejection) and click "Explain Availability" | Amber fallback box with the fallback message; availability banner still visible |
+| # | Manual case | Steps | Expected | Reported status |
+|---|-------------|-------|----------|-----------------|
+| M1 | Available room | Select "Lecture Theatre 101", start 10:30, end 11:00, Check | Green banner "…you're good to go!", timeline highlights the slot | PASS (manually verified by user) |
+| M2 | Booking conflict | Same room, start 09:00, end 09:30, Check | Red banner naming CS301 Algorithms 08:00 – 10:00 | PASS (manually verified by user) |
+| M3 | Blocked room | Select "Computer Lab 3 (Blocked)", any valid interval, Check | Red banner with the maintenance reason; Blocked chip on the room card | PASS (manually verified by user) |
+| M4 | Invalid/past time | Start 08:00 (past) or 25:00 (invalid), Check | Field error under Start Time | PASS (manually verified by user) |
+| M5 | Explanation failure/fallback | Run a successful check, then force the adapter to reject and click "Explain Availability" | Amber fallback box with the fallback message; availability banner still visible | PASS (manually verified by user) |
 
-Screenshot evidence: none captured (no screenshot capability). M1–M5 are the list of screenshots still required.
+Screenshot evidence: the temporary development-only failure-simulation toggle that supported M5 has been removed after verification. No screenshot files are present in the project — none were saved to the repository, so none are available as archived artifacts.
 
 ## Verification commands (actual results, 2026-11-18)
 
@@ -67,4 +67,4 @@ Screenshot evidence: none captured (no screenshot capability). M1–M5 are the l
 
 - No jsdom/React Testing Library is installed, so UI rendering is not covered by automation; installing would require dependency approval.
 - The timeout case simulates a never-settling promise rather than a real network timeout — the app has no network layer by design (AC6).
-- Manual UI cases M1–M5 and their screenshots remain outstanding.
+- Screenshot files for M1–M5 are not present in the project; the manual verification is recorded by the user's report, not by archived images.
