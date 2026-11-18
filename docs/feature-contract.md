@@ -87,3 +87,13 @@ If the explanation adapter fails, the original availability result must remain a
 - No external AI APIs.
 - No backend or database.
 - All explanations must be based on actual application data.
+
+## 8. Implementation Notes
+
+- Adapter module: `src/lib/explanationAdapter.ts`. It exports `generateExplanation(input)` (async, resolves after a simulated delay), `classifyReason(input)`, and `EXPLANATION_FALLBACK_MESSAGE`.
+- Reason codes: `AVAILABLE`, `BOOKING_CONFLICT`, `BLOCKED_ROOM`, `INVALID_REQUEST`, `UNKNOWN`.
+- Classification order: validation errors take precedence, then availability status, then blocked/conflict detail. An unrecognized payload yields `UNKNOWN`.
+- The UI (`src/App.tsx`) shows an "Explain Availability" button after a check runs — including when validation failed — and renders the explanation below the availability result with its reason code.
+- If the adapter rejects, the UI shows the fallback message and the original availability result stays untouched.
+- The adapter is pure with respect to its input: it never mutates the payload, the room catalog, or booking data.
+- Tests: `src/lib/explanationAdapter.test.ts` (16 tests covering all four explanation types, reason codes, incomplete data, adapter failure, and input integrity).
