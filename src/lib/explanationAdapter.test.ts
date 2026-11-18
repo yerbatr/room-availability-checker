@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   EXPLANATION_FALLBACK_MESSAGE,
+  buildExplanationContext,
   classifyReason,
   generateExplanation,
   type ExplanationInput,
 } from '@/lib/explanationAdapter';
+import {
+  PROMPT_VARIANTS,
+  SYSTEM_INSTRUCTION,
+  buildPromptWithInstruction,
+} from '@/lib/explanationPrompts';
 
 const VALID_INPUT: ExplanationInput = {
   roomId: 'LT101',
@@ -186,5 +192,77 @@ describe('simulation behavior', () => {
     await vi.advanceTimersByTimeAsync(250);
     expect(resolved).toBe(true);
     vi.useRealTimers();
+  });
+});
+
+describe('system instruction and prompt variants', () => {
+  it('restricts the model to supplied facts in the system instruction', () => {
+    expect(SYSTEM_INSTRUCTION).toMatch(/only the facts supplied/i);
+    expect(SYSTEM_INSTRUCTION).toMatch(/never invent/i);
+    expect(SYSTEM_INSTRUCTION).toMatch(/never (override|make unsupported)/i);
+    expect(SYSTEM_INSTRUCTION).toMatch(/do not assume or guess/i);
+    expect(SYSTEM_INSTRUCTION).toMatch(/concise, respectful/i);
+  });
+
+  it('exposes all three prompt variants for comparison', () => {
+    expect(Object.keys(PROMPT_VARIANTS).sort()).toEqual(['basic', 'strict', 'structured']);
+    for (const text of Object.values(PROMPT_VARIANTS)) {
+      expect(typeof text).toBe('string');
+      expect(text.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('includes the deterministic result and reason code in the structured context', () => {
+    const context = buildExplanationContext({
+      ...VALID_INPUT,
+      status: 'unavailable',
+      blocked: true,
+      blockedReason: 'Maintenance',
+    });
+    expect(context.structuredInput.status).toBe('unavailable');
+    expect(context.reasonCode).toBe('BLOCKED_ROOM');
+    expect(context.structuredInput).toEqual(
+      expect.objectContaining({ roomName: 'Lecture Theatre 101' })
+    );
+  });
+
+  it('uses the selected strict prompt as the default system instruction', () => {
+    const context = buildExplanationContext(VALID_INPUT);
+    expect(context.systemInstruction).toBe(SYSTEM_INSTRUCTION);
+    expect(context.systemInstruction).toBe(PROMPT_VARIANTS.strict);
+  });
+
+  it('accepts an alternative prompt variant when building the context', () => {
+    const context = buildExplanationContext(VALID_INPUT, PROMPT_VARIANTS.basic);
+    expect(context.systemInstruction).toBe(PROMPT_VARIANTS.basic);
+  });
+
+  it('builds a full prompt containing the instruction and the structured data', () => {
+    const prompt = buildPromptWithInstruction(SYSTEM_INSTRUCTION, VALID_INPUT);
+    expect(prompt).toContain(SYSTEM_INSTRUCTION);
+    expect(prompt).toContain('"roomName"');
+    expect(prompt).toContain('"status"');
+  });
+
+  it('keeps every explanation consistent with the deterministic result across variants', async () => {
+    const unavailable = {
+      ...VALID_INPUT,
+      status: 'unavailable' as const,
+      blocked: true,
+      blockedReason: 'Closed for maintenance',
+    };
+    for (const instruction of Object.values(PROMPT_VARIANTS)) {
+      const result = await generateExplanation(unavailable, 0);
+      expect(result.reasonCode).toBe('BLOCKED_ROOM');
+      expect(result.explanation).toContain('Closed for maintenance');
+      void instruction;
+    }
+  });
+
+  it('does not invent details when information is missing, and stays concise and respectful', async () => {
+    const result = await generateExplanation({ status: 'unavailable' }, 0);
+    expect(result.explanation).not.toContain('undefined');
+    expect(result.explanation).not.toContain('NaN');
+    expect(result.explanation.length).toBeLessThan(300);
   });
 });

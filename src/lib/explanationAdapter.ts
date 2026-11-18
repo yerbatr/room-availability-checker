@@ -1,4 +1,5 @@
 import { minutesToTime } from '@/lib/bookingRules';
+import { SYSTEM_INSTRUCTION } from '@/lib/explanationPrompts';
 
 export type ExplanationReasonCode =
   | 'AVAILABLE'
@@ -33,6 +34,26 @@ export interface ExplanationInput {
 export interface ExplanationResult {
   reasonCode: ExplanationReasonCode;
   explanation: string;
+}
+
+export interface ExplanationContext {
+  systemInstruction: string;
+  structuredInput: ExplanationInput;
+  reasonCode: ExplanationReasonCode;
+}
+
+export function buildExplanationContext(
+  input: ExplanationInput,
+  systemInstruction: string = SYSTEM_INSTRUCTION
+): ExplanationContext {
+  if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+    throw new Error('Explanation adapter failure: invalid structured payload.');
+  }
+  return {
+    systemInstruction,
+    structuredInput: input,
+    reasonCode: classifyReason(input),
+  };
 }
 
 export const EXPLANATION_FALLBACK_MESSAGE =
@@ -138,12 +159,9 @@ export async function generateExplanation(
   input: ExplanationInput,
   delayMs: number = DEFAULT_DELAY_MS
 ): Promise<ExplanationResult> {
-  if (input === null || typeof input !== 'object' || Array.isArray(input)) {
-    throw new Error('Explanation adapter failure: invalid structured payload.');
-  }
+  const context = buildExplanationContext(input);
 
   await wait(delayMs);
 
-  const reasonCode = classifyReason(input);
-  return { reasonCode, explanation: buildExplanation(input, reasonCode) };
+  return { reasonCode: context.reasonCode, explanation: buildExplanation(input, context.reasonCode) };
 }

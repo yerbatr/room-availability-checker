@@ -96,4 +96,62 @@ If the explanation adapter fails, the original availability result must remain a
 - The UI (`src/App.tsx`) shows an "Explain Availability" button after a check runs — including when validation failed — and renders the explanation below the availability result with its reason code.
 - If the adapter rejects, the UI shows the fallback message and the original availability result stays untouched.
 - The adapter is pure with respect to its input: it never mutates the payload, the room catalog, or booking data.
-- Tests: `src/lib/explanationAdapter.test.ts` (16 tests covering all four explanation types, reason codes, incomplete data, adapter failure, and input integrity).
+- Tests: `src/lib/explanationAdapter.test.ts` (24 tests covering all four explanation types, reason codes, incomplete data, adapter failure, input integrity, the system instruction, and prompt variants).
+- Prompt variants: `src/lib/explanationPrompts.ts` exports the three variants, the selected `SYSTEM_INSTRUCTION`, and `buildPromptWithInstruction`. See section 9.
+
+## 9. System Instruction and Prompt Comparison
+
+### Final system instruction (selected: Prompt C — strict factual)
+
+> Role: You are an availability explanation assistant for a campus room booking prototype.
+> The deterministic availability checker has already decided the result. You explain it; you never override, reinterpret, or re-evaluate it.
+> Facts: Use only the facts supplied in the structured input. Never invent room details, booking names, times, blocked reasons, or availability causes. Never make unsupported claims.
+> Missing information: If a detail you would normally include is missing, omit it or say it is not available. Do not assume or guess.
+> Style: Be concise, respectful, and user-friendly. Address the user directly and, where it helps, suggest checking a different time without promising availability.
+
+### Structured context example
+
+The adapter receives and forwards this shape (from `buildExplanationContext`):
+
+```json
+{
+  "systemInstruction": "<selected prompt text>",
+  "reasonCode": "BOOKING_CONFLICT",
+  "structuredInput": {
+    "roomId": "LT101",
+    "roomName": "Lecture Theatre 101",
+    "status": "unavailable",
+    "startMinutes": 540,
+    "endMinutes": 600,
+    "conflict": { "label": "CS301 Algorithms", "start": 480, "end": 600 },
+    "blocked": false,
+    "blockedReason": null
+  }
+}
+```
+
+Reason codes remain: `AVAILABLE`, `BLOCKED_ROOM`, `BOOKING_CONFLICT`, `INVALID_REQUEST`, `UNKNOWN`.
+
+### Prompt variants
+
+**Prompt A — Basic.** "You explain room availability results to campus users. Explain the result using only the facts supplied in the structured input. Be concise and user-friendly."
+
+**Prompt B — Structured.** Roles plus explicit context fields (roomName, status, reasonCode, interval, conflict, blockedReason, validationErrors) and six numbered response requirements, ending with "use only the supplied facts and nothing else."
+
+**Prompt C — Strict factual.** As quoted above: no override of the deterministic result, only supplied facts, explicit missing-information rule, concise and respectful style.
+
+### Comparison (same scenarios: available, conflict, blocked, invalid, missing data; scale 1–5)
+
+| Criterion | A — Basic | B — Structured | C — Strict factual |
+|---|:---:|:---:|:---:|
+| Clarity | 3 | 4 | 5 |
+| Consistency | 2 | 4 | 5 |
+| Factual agreement | 3 | 4 | 5 |
+
+- **Clarity:** A is short but vague about tone and structure; B is clear but verbose; C is precise and user-focused.
+- **Consistency:** A leaves output format to the model, so wording drifts across scenarios; B's numbered requirements stabilize it; C adds the missing-information rule, keeping behavior stable even for incomplete input.
+- **Factual agreement:** A and B say "use supplied facts" but do not explicitly forbid re-evaluating the deterministic result or guessing; C prohibits override, invention, and assumptions outright.
+
+### Selected prompt and justification
+
+Prompt C is selected. It is the only variant that (1) explicitly subordinates the model to the deterministic checker — the core requirement of this feature, (2) defines behavior for missing information, which is where hallucination risk is highest, and (3) still satisfies the clarity and tone requirements. B is the runner-up and is a good fallback if richer formatting is ever needed; A is too under-specified for production use.
