@@ -152,6 +152,8 @@ Reason codes remain: `AVAILABLE`, `BLOCKED_ROOM`, `BOOKING_CONFLICT`, `INVALID_R
 - **Consistency:** A leaves output format to the model, so wording drifts across scenarios; B's numbered requirements stabilize it; C adds the missing-information rule, keeping behavior stable even for incomplete input.
 - **Factual agreement:** A and B say "use supplied facts" but do not explicitly forbid re-evaluating the deterministic result or guessing; C prohibits override, invention, and assumptions outright.
 
+**Scope of these scores.** The three prompt scores above are a static, design-time evaluation of the prompt texts only. No real LLM was executed to produce them. The current adapter is a mock implementation with no real AI API connection. Runtime behavior is verified through the adapter unit tests in `src/lib/explanationAdapter.test.ts`.
+
 ### Selected prompt and justification
 
 Prompt C is selected. It is the only variant that (1) explicitly subordinates the model to the deterministic checker — the core requirement of this feature, (2) defines behavior for missing information, which is where hallucination risk is highest, and (3) still satisfies the clarity and tone requirements. B is the runner-up and is a good fallback if richer formatting is ever needed; A is too under-specified for production use.

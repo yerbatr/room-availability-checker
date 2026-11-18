@@ -252,10 +252,13 @@ describe('system instruction and prompt variants', () => {
       blockedReason: 'Closed for maintenance',
     };
     for (const instruction of Object.values(PROMPT_VARIANTS)) {
+      const context = buildExplanationContext(unavailable, instruction);
+      expect(context.systemInstruction).toBe(instruction);
+      expect(context.structuredInput.status).toBe('unavailable');
+      expect(context.reasonCode).toBe('BLOCKED_ROOM');
       const result = await generateExplanation(unavailable, 0);
       expect(result.reasonCode).toBe('BLOCKED_ROOM');
       expect(result.explanation).toContain('Closed for maintenance');
-      void instruction;
     }
   });
 
