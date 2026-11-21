@@ -93,6 +93,7 @@ Other UI behavior:
 - For parallel or background agent tasks, use isolated branches or worktrees. Do not allow multiple agents to modify the same files concurrently.
 - Do not overwrite or discard another contributor's changes. Stop and report conflicts before resolving them.
 - Before proposing a change as complete, run the relevant tests and verification commands and report their actual results.
+- Record manual UI checks as executed or not executed, including the observed result and any environment limitation; do not imply that listing a manual case means it was verified.
 - Do not claim that a test, build, or verification passed unless it was actually executed successfully.
 - Ask for human approval before adding dependencies, changing project scope, or performing actions outside the local development environment.
 
@@ -109,3 +110,14 @@ Other UI behavior:
   - Interval that overlaps an existing booking (unavailable, with the label and times in the message).
   - Available interval (success message with room name and times).
   - Changing the room while a check is shown refreshes the result for the new room.
+
+## Agent review gate
+
+- Read the relevant source, tests, README, and this file before editing.
+- Keep changes minimal and within the requested scope; preserve the existing app architecture and fictional catalog.
+- For bug fixes, add or update a targeted regression test when feasible.
+- Do not add dependencies, broaden scope, or modify protected/generated content (`dist/`, `.bolt/`) without human approval.
+- Never inspect, expose, or modify secrets. Do not run destructive commands or deploy/publish the application.
+- Review the complete diff before reporting a change. Run relevant checks and report their actual output, including failures and limitations.
+- Do not commit, push, merge, or perform external repository actions without explicit human approval.
+- Ask for approval before risky actions or changes outside the local repository.

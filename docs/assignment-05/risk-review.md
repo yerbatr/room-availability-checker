@@ -1,0 +1,13 @@
+# Task #04 — Read-only Risk Review
+
+Review date: 2026-11-21. No files were changed as part of the risk investigation. These are candidate findings independently checked against source/configuration and baseline command output.
+
+| ID | Category | Severity | Candidate and evidence | Verification / classification | Mitigation idea |
+|---|---|---|---|---|---|
+| R1 | Correctness | Low–medium | `src/App.tsx:28` fixes current time at 08:30; validation and display use that constant (`:142`, `:178`, `:364`). | Source inspection confirms behavior. **Confirmed design limitation**, conditional on intended clock semantics; not evidence of a runtime bug if the fixed clock is intentional. | Make clock injection/dynamic behavior a separately approved product requirement; add tests for date/time boundary. |
+| R2 | Maintainability / dependency | Medium | `package.json:16` declared `@supabase/supabase-js`, while source search found no reference; `AGENTS.md:13` says no backend/database. | Manifest, source search, and repository instruction agree. **Confirmed unused-dependency mismatch**; it was subsequently removed in Task #07. | Removal implemented; keep absent unless a reviewed requirement needs it. |
+| R3 | Agent operations / test coverage | Medium | There is no browser/UI test script in `package.json`; `AGENTS.md:105-115` describes UI cases as manual. | Script and instruction inspection confirms no automated UI script is configured. **Confirmed verification gap**, not proof of broken UI. | A manual evidence gate was added; automated UI checks still require an approved strategy. |
+| R4 | Maintainability | Low | `tsconfig.app.json:25-26` sets `noUnusedLocals` and `noUnusedParameters` false. | Configuration confirms unused-code checks are disabled. **Confirmed configuration fact; plausible maintainability risk**, since lint/typecheck/build pass but unused symbols may not be caught by TypeScript. | Consider enabling after assessing baseline diagnostics; avoid broad cleanup in this assignment without need. |
+| R5 | Security / dependency | Low (unverified) | No secret or exploit evidence was found in inspected files. `npm prune --ignore-scripts --offline` reported “found 0 vulnerabilities.” | **Unsupported as a confirmed vulnerability.** The npm summary found no known advisories for the pruned tree at execution time; no separate secret scan was run, and this does not prove absence of all security issues. | Do not claim a vulnerability. Run a reviewed secret scan only if project scope warrants it. |
+
+No deployment, network service, authentication, or real data was observed in the reviewed app description/source. The absent evidence is not proof that every security concern is impossible.
